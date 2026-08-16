@@ -198,6 +198,19 @@ def process_topic(
     return {"status": "delivered", "sent": sent, "failed": failed}
 
 
+def build_llm() -> OpenAICompatAdapter:
+    if settings.llm_provider == "openrouter":
+        return OpenAICompatAdapter(
+            settings.openrouter_api_key,
+            "https://openrouter.ai/api/v1",
+            settings.openrouter_model,
+            settings.summary_lines,
+        )
+    return OpenAICompatAdapter(
+        settings.deepseek_api_key, settings.deepseek_base_url, settings.deepseek_model, settings.summary_lines
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="모닝브리프 백엔드 파이프라인")
     parser.add_argument("--dry-run", action="store_true", help="텔레그램 미발송, 콘솔 출력만")
@@ -206,17 +219,7 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
     db = SupabaseDB(settings.supabase_url, settings.supabase_service_role_key)
-    if settings.llm_provider == "openrouter":
-        ai = OpenAICompatAdapter(
-            settings.openrouter_api_key,
-            "https://openrouter.ai/api/v1",
-            settings.openrouter_model,
-            settings.summary_lines,
-        )
-    else:
-        ai = OpenAICompatAdapter(
-            settings.deepseek_api_key, settings.deepseek_base_url, settings.deepseek_model, settings.summary_lines
-        )
+    ai = build_llm()
     notifier = TelegramNotifier(settings.telegram_bot_token)
 
     brief_date = datetime.now(KST).date()
