@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 from urllib.parse import quote_plus
 
 import feedparser
@@ -10,10 +9,10 @@ from .base import Article, Collector
 class BingNewsRSSCollector(Collector):
     name = "bing_rss"
 
-    def collect(self, keyword: str) -> List[Article]:
+    def collect(self, keyword: str) -> list[Article]:
         url = f"https://www.bing.com/news/search?q={quote_plus(keyword)}&format=rss&mkt=ko-KR"
         feed = feedparser.parse(url)
-        articles: List[Article] = []
+        articles: list[Article] = []
         for entry in feed.entries:
             published = None
             if entry.get("published_parsed"):

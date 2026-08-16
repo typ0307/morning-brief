@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
 
 
 class LLMAdapter(ABC):
     @abstractmethod
-    def select_diverse(self, keyword: str, articles: List[Dict[str, Any]], k: int) -> List[Dict[str, Any]]:
+    def select_diverse(self, keyword: str, articles: list[dict[str, Any]], k: int) -> list[dict[str, Any]]:
         raise NotImplementedError
 
     @abstractmethod
-    def summarize(self, keyword: str, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def summarize(self, keyword: str, articles: list[dict[str, Any]]) -> dict[str, Any]:
         raise NotImplementedError

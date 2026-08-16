@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 from urllib.parse import quote_plus
 
 import feedparser
@@ -10,10 +9,10 @@ from .base import Article, Collector
 class GoogleNewsRSSCollector(Collector):
     name = "google_rss"
 
-    def collect(self, keyword: str) -> List[Article]:
+    def collect(self, keyword: str) -> list[Article]:
         url = f"https://news.google.com/rss/search?q={quote_plus(keyword)}&hl=ko&gl=KR&ceid=KR:ko"
         feed = feedparser.parse(url)
-        articles: List[Article] = []
+        articles: list[Article] = []
         for entry in feed.entries:
             published = None
             if entry.get("published_parsed"):

@@ -1,16 +1,16 @@
 import html as html_module
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 SUMMARY_SYSTEM_PROMPT = (
-    "당신은 뉴스 요약 전문가입니다. 주어진 뉴스 기사들을 바탕으로 "
-    "출근길 모바일 환경에 적합한 팩트 중심 {n}줄 요약을 작성하세요.\n"
+    "당신은 뉴스 요약 전문가입니다. 주어진 뉴스 기사를 바탕으로 "
+    "출근길 모바일 환경에 맞는 팩트 중심 {n}줄 요약을 작성하세요.\n"
     "반드시 다음 JSON 형식으로만 응답하세요:\n"
-    '{{"title": "브리핑 제목", "summary": ["요약 1", "요약 2", "요약 3", "요약 4", "요약 5"], "sentiment": "positive|neutral|negative"}}\n'
-    "- summary는 정확히 {n}개 항목의 문자열 배열이어야 합니다.\n"
-    "- 각 줄은 서로 다른 뉴스·이슈를 담아 중복 없이 다양하게 요약하세요.\n"
-    '- sentiment는 "positive", "neutral", "negative" 중 하나여야 합니다.\n'
+    '{{"title": "브리핑 제목", "summary": ["요약 1", "요약 2", ..., "요약 {n}"], "sentiment": "neutral"}}\n'
+    "- summary는 정확히 {n}개 항목의 문자열 배열입니다.\n"
+    "- 각 줄은 서로 다른 이슈를 담아 중복 없이 다양하게 요약하세요.\n"
+    '- sentiment는 "positive", "neutral", "negative" 중 하나입니다.\n'
     "JSON 외 다른 텍스트는 포함하지 마세요."
 )
 
@@ -29,7 +29,7 @@ def clean(text: Any) -> str:
     return html_module.unescape(s).replace("\xa0", " ").strip()
 
 
-def parse_json(text: Optional[str]) -> Optional[Dict[str, Any]]:
+def parse_json(text: str | None) -> dict[str, Any] | None:
     if not text:
         return None
     text = text.strip()
@@ -45,7 +45,7 @@ def parse_json(text: Optional[str]) -> Optional[Dict[str, Any]]:
     return data if isinstance(data, dict) else None
 
 
-def build_selection_content(articles: List[Dict[str, Any]]) -> str:
+def build_selection_content(articles: list[dict[str, Any]]) -> str:
     lines = []
     for i, a in enumerate(articles, 1):
         title = clean(a.get("title"))
@@ -54,7 +54,7 @@ def build_selection_content(articles: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def build_article_content(keyword: str, articles: List[Dict[str, Any]]) -> str:
+def build_article_content(keyword: str, articles: list[dict[str, Any]]) -> str:
     chunks = [f"키워드: {keyword}"]
     for i, a in enumerate(articles, 1):
         title = clean(a.get("title"))
@@ -63,7 +63,7 @@ def build_article_content(keyword: str, articles: List[Dict[str, Any]]) -> str:
     return "\n\n".join(chunks)
 
 
-def parse_selection(text: Optional[str], articles: List[Dict[str, Any]], k: int) -> List[Dict[str, Any]]:
+def parse_selection(text: str | None, articles: list[dict[str, Any]], k: int) -> list[dict[str, Any]]:
     data = parse_json(text)
     if data is None:
         return []
@@ -83,7 +83,7 @@ def parse_selection(text: Optional[str], articles: List[Dict[str, Any]], k: int)
     return result[:k]
 
 
-def parse_summary(text: Optional[str], n_lines: int) -> Optional[Dict[str, Any]]:
+def parse_summary(text: str | None, n_lines: int) -> dict[str, Any] | None:
     data = parse_json(text)
     if data is None:
         return None
@@ -100,7 +100,7 @@ def parse_summary(text: Optional[str], n_lines: int) -> Optional[Dict[str, Any]]
     }
 
 
-def fallback_summary(keyword: str, articles: List[Dict[str, Any]], n_lines: int) -> Dict[str, Any]:
+def fallback_summary(keyword: str, articles: list[dict[str, Any]], n_lines: int) -> dict[str, Any]:
     lines = []
     for a in articles:
         if len(lines) >= n_lines:

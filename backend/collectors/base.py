@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Optional
 
 
 @dataclass
@@ -10,7 +9,7 @@ class Article:
     url: str = ""
     snippet: str = ""
     body: str = ""
-    published_at: Optional[datetime] = None
+    published_at: datetime | None = None
 
     def to_db(self, topic_id: str) -> dict:
         published = None
@@ -34,5 +33,5 @@ class Collector(ABC):
     name: str = "base"
 
     @abstractmethod
-    def collect(self, keyword: str) -> List[Article]:
+    def collect(self, keyword: str) -> list[Article]:
         raise NotImplementedError

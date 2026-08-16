@@ -14,7 +14,9 @@ class TelegramNotifier:
         async def _send() -> None:
             bot = Bot(token=self._token)
             try:
-                await bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
+                await bot.send_message(
+                    chat_id=chat_id, text=text, parse_mode=parse_mode
+                )
             finally:
                 await bot.shutdown()
 

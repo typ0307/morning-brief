@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,13 +9,9 @@ class Settings(BaseSettings):
     deepseek_api_key: str
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-v4-flash"
-    llm_provider: str = "deepseek"
-    gemini_api_key: Optional[str] = None
-    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
-    gemini_model: str = "gemini-flash-latest"
     telegram_bot_token: str
-    admin_chat_id: Optional[str] = None
-    max_articles_per_topic: int = 10
+    admin_chat_id: str | None = None
+    max_articles_per_topic: int = 5
     max_candidates_per_topic: int = 20
     summary_lines: int = 5
     require_all_keyword_tokens: bool = True
