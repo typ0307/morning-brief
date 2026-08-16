@@ -102,3 +102,24 @@ class SupabaseDB:
         self.client.table("subscriptions").upsert(
             {"user_id": user_id, "topic_id": topic_id}, on_conflict="user_id,topic_id"
         ).execute()
+
+    def unsubscribe(self, user_id: str, topic_id: str) -> None:
+        self.client.table("subscriptions").delete().eq("user_id", user_id).eq("topic_id", topic_id).execute()
+
+    def list_subscriptions(self, user_id: str) -> list[dict[str, Any]]:
+        subs = self.client.table("subscriptions").select("topic_id").eq("user_id", user_id).execute().data
+        topic_ids = [s["topic_id"] for s in subs]
+        if not topic_ids:
+            return []
+        return (
+            self.client.table("topics")
+            .select("id, keyword")
+            .in_("id", topic_ids)
+            .order("keyword")
+            .execute()
+            .data
+        )
+
+    def get_topic_by_keyword(self, keyword: str) -> dict[str, Any] | None:
+        rows = self.client.table("topics").select("*").eq("keyword", keyword).execute().data
+        return rows[0] if rows else None
