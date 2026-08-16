@@ -1,0 +1,10 @@
+feedparser
+beautifulsoup4
+requests
+supabase
+python-telegram-bot
+openai
+pydantic
+pydantic-settings
+python-dotenv
+tzdata
