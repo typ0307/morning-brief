@@ -3,8 +3,8 @@
 
 drop table if exists deliveries;
 drop table if exists briefing_articles;
-drop table if exists briefings;
 alter table articles drop column if exists briefing_id;
+drop table if exists briefings;
 
 create table if not exists briefings (
   id uuid primary key default gen_random_uuid(),
