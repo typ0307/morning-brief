@@ -3,17 +3,16 @@ import html
 import logging
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
 
-from ai.deepseek import DeepSeekAdapter
+from ai.openai_compat import OpenAICompatAdapter
 from collectors.base import Article
-from collectors.bing_rss import BingNewsRSSCollector
-from collectors.google_rss import GoogleNewsRSSCollector
+from collectors.naver_news import NaverNewsCollector
 from config import settings
 from db.supabase import SupabaseDB
 from notifier.telegram import TelegramNotifier
@@ -27,19 +26,39 @@ USER_AGENT = (
 logger = logging.getLogger("morning-brief")
 
 
+def filter_recent(articles: list[Article], max_age_hours: int) -> list[Article]:
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+    result = []
+    for a in articles:
+        if a.published_at is None:
+            continue
+        dt = a.published_at
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        if dt.astimezone(timezone.utc) >= cutoff:
+            result.append(a)
+    return result
+
+
 def collect_articles(keyword: str) -> list[Article]:
-    articles: list[Article] = []
+    if not (settings.naver_client_id and settings.naver_client_secret):
+        logger.error("네이버 API 키가 설정되지 않았습니다")
+        return []
     try:
-        articles = GoogleNewsRSSCollector().collect(keyword)
-        logger.info("Google RSS 수집 %s: %d건", keyword, len(articles))
+        articles = NaverNewsCollector(
+            settings.naver_client_id, settings.naver_client_secret
+        ).collect(keyword)
+        logger.info("Naver 수집 %s: %d건", keyword, len(articles))
     except Exception as e:
-        logger.warning("Google RSS 수집 실패 %s: %s", keyword, e)
-    if not articles:
-        try:
-            articles = BingNewsRSSCollector().collect(keyword)
-            logger.info("Bing RSS fallback 수집 %s: %d건", keyword, len(articles))
-        except Exception as e:
-            logger.error("Bing RSS 수집 실패 %s: %s", keyword, e)
+        logger.error("Naver 수집 실패 %s: %s", keyword, e)
+        return []
+    if articles and settings.max_article_age_hours > 0:
+        before = len(articles)
+        articles = filter_recent(articles, settings.max_article_age_hours)
+        if len(articles) != before:
+            logger.info(
+                "오래된 기사 제외 %s: %d건", keyword, before - len(articles)
+            )
     return articles
 
 
@@ -103,7 +122,7 @@ def process_topic(
     topic: dict[str, Any],
     brief_date,
     db: SupabaseDB,
-    ai: DeepSeekAdapter,
+    ai: OpenAICompatAdapter,
     notifier: TelegramNotifier,
     dry_run: bool,
 ) -> dict[str, Any]:
@@ -187,9 +206,17 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
     db = SupabaseDB(settings.supabase_url, settings.supabase_service_role_key)
-    ai = DeepSeekAdapter(
-        settings.deepseek_api_key, settings.deepseek_base_url, settings.deepseek_model, settings.summary_lines
-    )
+    if settings.llm_provider == "openrouter":
+        ai = OpenAICompatAdapter(
+            settings.openrouter_api_key,
+            "https://openrouter.ai/api/v1",
+            settings.openrouter_model,
+            settings.summary_lines,
+        )
+    else:
+        ai = OpenAICompatAdapter(
+            settings.deepseek_api_key, settings.deepseek_base_url, settings.deepseek_model, settings.summary_lines
+        )
     notifier = TelegramNotifier(settings.telegram_bot_token)
 
     brief_date = datetime.now(KST).date()
