@@ -75,8 +75,8 @@ class OpenAICompatAdapter(LLMAdapter):
                 selected = parse_selection(resp, articles, k)
                 if selected:
                     return selected
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("LLM 기사 선별 시도 실패: %s", e)
             if attempt < MAX_ATTEMPTS - 1:
                 time.sleep(2 * (attempt + 1))
         return list(articles[:k])

@@ -105,16 +105,26 @@ def format_message(keyword: str, brief_date: str, summary: dict[str, Any], artic
         esc(summary.get("title") or keyword),
     ]
     for s in summary.get("summary", []):
-        lines.append(f"- {esc(s)}")
-    if articles:
-        links = []
-        for a in articles[:5]:
-            title = esc((a.get("title") or "기사")[:40])
-            links.append(f'<a href="{esc(a["url"])}">{title}</a>')
-        lines.append("출처: " + " | ".join(links))
+        if str(s).strip():
+            lines.append(f"- {esc(s)}")
+
+    limit = 4096
     msg = "\n".join(lines)
-    if len(msg) > 4096:
-        msg = msg[:4090] + "..."
+    if len(msg) > limit:
+        return msg[: limit - 3] + "..."
+
+    if not articles:
+        return msg
+
+    links = []
+    for a in articles[:5]:
+        title = esc((a.get("title") or "기사")[:40])
+        links.append(f'<a href="{esc(a["url"])}">{title}</a>')
+
+    for n in range(len(links), 0, -1):
+        candidate = msg + "\n출처: " + " | ".join(links[:n])
+        if len(candidate) <= limit:
+            return candidate
     return msg
 
 
@@ -143,7 +153,7 @@ def process_topic(
         if not articles:
             logger.info("수집 기사 없음: %s", keyword)
             return {"status": "no_articles"}
-        existing = db.existing_urls([a.url for a in articles])
+        existing = db.existing_urls(topic_id, [a.url for a in articles])
         articles = dedup_articles(articles, existing)
         if not articles:
             logger.info("신규 기사 없음(중복): %s", keyword)
@@ -184,6 +194,9 @@ def process_topic(
     for sub in subscribers:
         if sub["id"] in sent_user_ids:
             continue
+        if not sub.get("telegram_chat_id"):
+            logger.info("텔레그램 미연결 구독자 건너뜀: user_id=%s", sub["id"])
+            continue
         if dry_run:
             logger.info("[dry-run] 발송 대상 chat_id=%s:\n%s", sub["telegram_chat_id"], msg)
             sent += 1
@@ -200,12 +213,18 @@ def process_topic(
 
 def build_llm() -> OpenAICompatAdapter:
     if settings.llm_provider == "openrouter":
+        if not settings.openrouter_api_key:
+            logger.error("LLM_PROVIDER=openrouter 이지만 OPENROUTER_API_KEY가 설정되지 않았습니다")
+            raise SystemExit(1)
         return OpenAICompatAdapter(
             settings.openrouter_api_key,
             "https://openrouter.ai/api/v1",
             settings.openrouter_model,
             settings.summary_lines,
         )
+    if not settings.deepseek_api_key:
+        logger.error("LLM_PROVIDER=deepseek 이지만 DEEPSEEK_API_KEY가 설정되지 않았습니다")
+        raise SystemExit(1)
     return OpenAICompatAdapter(
         settings.deepseek_api_key, settings.deepseek_base_url, settings.deepseek_model, settings.summary_lines
     )

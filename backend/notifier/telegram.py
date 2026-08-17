@@ -12,13 +12,10 @@ class TelegramNotifier:
 
     def send(self, chat_id: str, text: str, parse_mode: str | None = None) -> bool:
         async def _send() -> None:
-            bot = Bot(token=self._token)
-            try:
+            async with Bot(token=self._token) as bot:
                 await bot.send_message(
                     chat_id=chat_id, text=text, parse_mode=parse_mode
                 )
-            finally:
-                await bot.shutdown()
 
         try:
             asyncio.run(_send())

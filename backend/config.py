@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     llm_provider: str = "deepseek"
     deepseek_api_key: str | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
-    deepseek_model: str = "deepseek-v4-flash"
+    deepseek_model: str = "deepseek-chat"
     openrouter_api_key: str | None = None
     openrouter_model: str = "inclusionai/ling-3.0-flash"
     naver_client_id: str | None = None

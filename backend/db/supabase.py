@@ -22,16 +22,23 @@ class SupabaseDB:
             return []
         return self.client.table("users").select("*").in_("id", user_ids).execute().data
 
-    def existing_urls(self, urls: list[str]) -> set[str]:
+    def existing_urls(self, topic_id: str, urls: list[str]) -> set[str]:
         if not urls:
             return set()
-        rows = self.client.table("articles").select("url").in_("url", urls).execute().data
+        rows = (
+            self.client.table("articles")
+            .select("url")
+            .eq("topic_id", topic_id)
+            .in_("url", urls)
+            .execute()
+            .data
+        )
         return {r["url"] for r in rows}
 
     def insert_articles(self, articles: list[dict[str, Any]]) -> None:
         if not articles:
             return
-        self.client.table("articles").upsert(articles, ignore_duplicates=True, on_conflict="url").execute()
+        self.client.table("articles").upsert(articles, ignore_duplicates=True, on_conflict="topic_id,url").execute()
 
     def update_article_body(self, article_id: str, body: str) -> None:
         self.client.table("articles").update({"body": body}).eq("id", article_id).execute()
@@ -123,3 +130,51 @@ class SupabaseDB:
     def get_topic_by_keyword(self, keyword: str) -> dict[str, Any] | None:
         rows = self.client.table("topics").select("*").eq("keyword", keyword).execute().data
         return rows[0] if rows else None
+
+    def link_telegram(self, code: str, telegram_chat_id: str) -> dict[str, Any]:
+        rows = self.client.table("link_codes").select("*").eq("code", code).execute().data
+        if not rows:
+            return {"ok": False, "reason": "invalid"}
+        code_row = rows[0]
+        if code_row.get("used_at"):
+            return {"ok": False, "reason": "used"}
+
+        expires_at = code_row.get("expires_at")
+        if expires_at:
+            try:
+                exp = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+                if exp.tzinfo is None:
+                    exp = exp.replace(tzinfo=timezone.utc)
+                if exp <= datetime.now(timezone.utc):
+                    return {"ok": False, "reason": "expired"}
+            except ValueError:
+                return {"ok": False, "reason": "invalid"}
+
+        web_users = self.client.table("users").select("*").eq("id", code_row["user_id"]).execute().data
+        if not web_users:
+            return {"ok": False, "reason": "invalid"}
+        web_user = web_users[0]
+        auth_user_id = web_user.get("auth_user_id")
+        if not auth_user_id:
+            return {"ok": False, "reason": "invalid"}
+
+        self.client.table("link_codes").update(
+            {"used_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", code_row["id"]).execute()
+
+        bot_users = self.client.table("users").select("*").eq("telegram_chat_id", telegram_chat_id).execute().data
+        bot_user = bot_users[0] if bot_users else None
+
+        if bot_user and bot_user["id"] != web_user["id"]:
+            subs = self.client.table("subscriptions").select("*").eq("user_id", web_user["id"]).execute().data
+            for s in subs:
+                self.client.table("subscriptions").upsert(
+                    {"user_id": bot_user["id"], "topic_id": s["topic_id"]},
+                    on_conflict="user_id,topic_id",
+                ).execute()
+            self.client.table("users").update({"auth_user_id": auth_user_id}).eq("id", bot_user["id"]).execute()
+            self.client.table("users").delete().eq("id", web_user["id"]).execute()
+            return {"ok": True, "user_id": bot_user["id"]}
+
+        self.client.table("users").update({"telegram_chat_id": telegram_chat_id}).eq("id", web_user["id"]).execute()
+        return {"ok": True, "user_id": web_user["id"]}

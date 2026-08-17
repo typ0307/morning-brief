@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 
@@ -36,7 +37,21 @@ async def _reply(update: Update, text: str, parse_mode: str | None = None) -> No
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await _reply(update, HELP_TEXT)
+    db: SupabaseDB = context.bot_data["db"]
+    if not context.args:
+        await _reply(update, HELP_TEXT)
+        return
+    code = context.args[0].strip()
+    chat_id = str(update.effective_chat.id)
+    result = await asyncio.to_thread(db.link_telegram, code, chat_id)
+    if result.get("ok"):
+        await _reply(update, "텔레그램 계정이 연결되었습니다. 이제 아침 브리핑을 받아볼 수 있습니다.")
+    elif result.get("reason") == "expired":
+        await _reply(update, "연결 코드가 만료되었습니다. 웹 설정 페이지에서 새 코드를 발급받아 주세요.")
+    elif result.get("reason") == "used":
+        await _reply(update, "이미 사용된 연결 코드입니다. 웹 설정 페이지에서 새 코드를 발급받아 주세요.")
+    else:
+        await _reply(update, "유효하지 않은 연결 코드입니다.")
 
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -49,9 +64,9 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not keyword:
         await _reply(update, "사용법: /subscribe <키워드>")
         return
-    user = db.upsert_user(str(update.effective_chat.id))
-    topic = db.upsert_topic(keyword)
-    db.subscribe(user["id"], topic["id"])
+    user = await asyncio.to_thread(db.upsert_user, str(update.effective_chat.id))
+    topic = await asyncio.to_thread(db.upsert_topic, keyword)
+    await asyncio.to_thread(db.subscribe, user["id"], topic["id"])
     await _reply(update, f"구독 완료: {topic['keyword']}")
 
 
@@ -61,19 +76,19 @@ async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not keyword:
         await _reply(update, "사용법: /unsubscribe <키워드>")
         return
-    user = db.upsert_user(str(update.effective_chat.id))
-    topic = db.get_topic_by_keyword(keyword)
+    user = await asyncio.to_thread(db.upsert_user, str(update.effective_chat.id))
+    topic = await asyncio.to_thread(db.get_topic_by_keyword, keyword)
     if topic is None:
         await _reply(update, f"토픽이 없습니다: {keyword}")
         return
-    db.unsubscribe(user["id"], topic["id"])
+    await asyncio.to_thread(db.unsubscribe, user["id"], topic["id"])
     await _reply(update, f"구독 취소: {topic['keyword']}")
 
 
 async def list_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db: SupabaseDB = context.bot_data["db"]
-    user = db.upsert_user(str(update.effective_chat.id))
-    topics = db.list_subscriptions(user["id"])
+    user = await asyncio.to_thread(db.upsert_user, str(update.effective_chat.id))
+    topics = await asyncio.to_thread(db.list_subscriptions, user["id"])
     if not topics:
         await _reply(update, "구독 중인 토픽이 없습니다.")
         return
@@ -88,27 +103,29 @@ async def brief(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await _reply(update, "사용법: /brief <키워드>")
         return
     await _reply(update, f"'{keyword}' 요약을 생성하고 있습니다...")
-    try:
+
+    def _run() -> tuple[str, bool]:
         articles = collect_articles(keyword)
         if settings.require_all_keyword_tokens:
             articles = [a for a in articles if is_relevant(a, keyword)]
         if not articles:
-            await _reply(update, f"최근 기사가 없습니다: {keyword}")
-            return
+            return f"최근 기사가 없습니다: {keyword}", False
         dicts = [
             {"title": a.title, "url": a.url, "snippet": a.snippet, "body": a.body}
             for a in articles
         ]
         selected = ai.select_diverse(keyword, dicts, settings.max_articles_per_topic)
         if not selected:
-            await _reply(update, f"선별 가능한 기사가 없습니다: {keyword}")
-            return
+            return f"선별 가능한 기사가 없습니다: {keyword}", False
         for p in selected:
             p["body"] = fetch_body(p["url"], p.get("snippet") or "")
         summary = ai.summarize(keyword, selected)
         brief_date = datetime.now(KST).date().isoformat()
-        msg = format_message(keyword, brief_date, summary, selected)
-        await _reply(update, msg, parse_mode="HTML")
+        return format_message(keyword, brief_date, summary, selected), True
+
+    try:
+        msg, use_html = await asyncio.to_thread(_run)
+        await _reply(update, msg, parse_mode="HTML" if use_html else None)
     except Exception as e:
         logger.exception("brief 실패: %s", keyword)
         await _reply(update, f"요약 생성에 실패했습니다: {e}")

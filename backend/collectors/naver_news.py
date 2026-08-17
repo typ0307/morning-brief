@@ -1,4 +1,6 @@
+import html
 import logging
+import re
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 
@@ -7,6 +9,11 @@ import requests
 from .base import Article, Collector
 
 logger = logging.getLogger(__name__)
+
+
+def _clean(value: str) -> str:
+    s = re.sub(r"<[^>]+>", " ", str(value or ""))
+    return html.unescape(s).replace("\xa0", " ").strip()
 
 
 class NaverNewsCollector(Collector):
@@ -36,9 +43,9 @@ class NaverNewsCollector(Collector):
             link = item.get("originallink") or item.get("link") or ""
             articles.append(
                 Article(
-                    title=item.get("title", ""),
+                    title=_clean(item.get("title", "")),
                     url=link,
-                    snippet=item.get("description", ""),
+                    snippet=_clean(item.get("description", "")),
                     published_at=self._parse_pubdate(item.get("pubDate")),
                 )
             )

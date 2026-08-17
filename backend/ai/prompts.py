@@ -109,8 +109,6 @@ def fallback_summary(keyword: str, articles: list[dict[str, Any]], n_lines: int)
         sentences = [s.strip() for s in re.split(r"(?<=[.!?。])\s+|\n", text) if s.strip()]
         if sentences:
             lines.append(sentences[0][:150])
-    while len(lines) < n_lines:
-        lines.append("")
     return {
         "title": f"[{keyword}] 뉴스 요약",
         "summary": lines[:n_lines],
