@@ -77,16 +77,19 @@ SEED_KEYWORDS=애플,삼성전자 SEED_CHAT_ID=<chat_id> uv run python seed.py
 
 ## 디스코드 봇 명령어
 
-디스코드 봇은 `!` 접두사를 사용하며, 봇과 같은 서버가 있어야 DM을 주고받을 수 있습니다.
+디스코드 봇은 슬래시 커맨드(`/`)와 접두사 명령어(`!`)를 함께 지원하며,
+봇과 같은 서버가 있어야 DM을 주고받을 수 있습니다. 슬래시 커맨드를 사용하려면
+초대 링크에 `applications.commands` 스코프가 필요합니다.
 
-| 명령어 | 설명 |
-| --- | --- |
-| `!start <code>` | 웹에서 발급한 코드로 계정 연결 (DM에 코드만 보내도 연결) |
-| `!subscribe <키워드>` | 토픽 구독 |
-| `!unsubscribe <키워드>` | 토픽 구독 취소 |
-| `!list` | 내 구독 목록 |
-| `!brief <키워드>` | 해당 키워드 바로 요약 |
-| `!help` | 도움말 |
+| 슬래시 커맨드 | 접두사 | 설명 |
+| --- | --- | --- |
+| `/start <코드>` | `!start <코드>` | 웹에서 발급한 코드로 계정 연결 (DM에 코드만 보내도 연결) |
+| `/subscribe <키워드>` | `!subscribe <키워드>` | 토픽 구독 |
+| `/unsubscribe <키워드>` | `!unsubscribe <키워드>` | 토픽 구독 취소 |
+| `/list` | `!list` | 내 구독 목록 |
+| `/brief <키워드>` | `!brief <키워드>` | 해당 키워드 바로 요약 |
+| `/help` | `!help` | 도움말 |
+| `/refresh` | `!refresh` | (관리자) 파이프라인 즉시 실행 |
 
 디스코드 봇 설정 시 Discord Developer Portal에서 **Message Content Intent**를 켜야
 `!` 명령어와 코드 DM을 수신할 수 있습니다. 봇 초대 링크는 프론트엔드의

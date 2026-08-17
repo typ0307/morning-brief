@@ -23,7 +23,7 @@
 백엔드 (배치/봇)
   ├─ main.py       : 수집 → 선별 → 본문 → 요약 → 텔레그램/디스코드 발송 파이프라인
   ├─ telegram_bot.py: 텔레그램 봇 (/subscribe, /unsubscribe, /list, /brief, /start <code>)
-  └─ discord_bot.py: 디스코드 봇 (!subscribe, !unsubscribe, !list, !brief, !start <code>)
+  └─ discord_bot.py: 디스코드 봇 (/subscribe, /brief 등 슬래시 + ! 접두사 명령어)
 ```
 
 - **프론트엔드**는 별도 API 서버 없이 **Supabase에 직접 접근**(RLS)합니다.
