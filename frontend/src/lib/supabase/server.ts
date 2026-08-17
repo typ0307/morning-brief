@@ -9,6 +9,7 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
+        encode: "tokens-only",
         getAll() {
           return cookieStore.getAll();
         },

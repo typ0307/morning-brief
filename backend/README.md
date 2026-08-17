@@ -6,7 +6,8 @@
 
 ## 요구 사항
 
-- Python 3.14
+- Python 3.14 (`.python-version`에 명시)
+- [uv](https://docs.astral.sh/uv/) (의존성·가상환경 관리)
 - Supabase 프로젝트
 - 외부 API: 네이버 뉴스 검색, 텔레그램 봇, LLM(DeepSeek 또는 OpenRouter)
 
@@ -28,10 +29,9 @@ migrations/    기존 DB 마이그레이션 SQL (번호 순서대로 실행)
 
 ```bash
 cd backend
-python3.14 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # 아래 환경변수 값 채우기
+uv venv                            # .python-version(3.14) 기반으로 .venv 생성
+uv pip install -r requirements.txt
+cp .env.example .env               # 아래 환경변수 값 채우기
 ```
 
 ### 환경변수 (`backend/.env`)
@@ -58,16 +58,17 @@ cp .env.example .env   # 아래 환경변수 값 채우기
 - **기존 DB**: `migrations/` 파일을 번호 순서대로 실행
   - `001_articles_topic_url.sql` — articles URL 제약을 `(topic_id, url)` 복합 UNIQUE로 변경
   - `002_web_auth.sql` — users 확장, link_codes, RLS 정책, 가입 트리거
+  - `003_backfill_existing_users.sql` — 트리거 적용 전에 가입한 기존 auth.users 백필
 
 ## 실행
 
 ```bash
-python main.py --dry-run   # 수집~요약까지 실행, 텔레그램 미발송(콘솔 출력)
-python main.py             # 실제 발송
-python bot.py              # 텔레그램 봇 실행
+uv run python main.py --dry-run   # 수집~요약까지 실행, 텔레그램 미발송(콘솔 출력)
+uv run python main.py             # 실제 발송
+uv run python bot.py              # 텔레그램 봇 실행
 
 # 시드 (기존 chat_id 구독자에게 키워드 구독 생성)
-SEED_KEYWORDS=애플,삼성전자 SEED_CHAT_ID=<chat_id> python seed.py
+SEED_KEYWORDS=애플,삼성전자 SEED_CHAT_ID=<chat_id> uv run python seed.py
 ```
 
 ## 텔레그램 봇 명령어

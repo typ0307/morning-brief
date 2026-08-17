@@ -1,3 +1,5 @@
+"""OpenAI 호환 API 기반 LLM 어댑터 (DeepSeek/OpenRouter)."""
+
 import logging
 import time
 from typing import Any

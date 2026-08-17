@@ -1,3 +1,5 @@
+"""네이버 뉴스 검색 API 수집기."""
+
 import html
 import logging
 import re

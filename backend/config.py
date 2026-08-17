@@ -1,3 +1,5 @@
+"""환경 설정 (pydantic-settings, .env 파일 로드)."""
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

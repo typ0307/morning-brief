@@ -1,3 +1,5 @@
+"""Supabase DB 레이어 (service_role 키로 RLS 우회 접근)."""
+
 from datetime import datetime, timezone
 from typing import Any
 
@@ -172,8 +174,9 @@ class SupabaseDB:
                     {"user_id": bot_user["id"], "topic_id": s["topic_id"]},
                     on_conflict="user_id,topic_id",
                 ).execute()
-            self.client.table("users").update({"auth_user_id": auth_user_id}).eq("id", bot_user["id"]).execute()
+            # 웹 placeholder를 먼저 삭제해야 auth_user_id unique 충돌을 피할 수 있음
             self.client.table("users").delete().eq("id", web_user["id"]).execute()
+            self.client.table("users").update({"auth_user_id": auth_user_id}).eq("id", bot_user["id"]).execute()
             return {"ok": True, "user_id": bot_user["id"]}
 
         self.client.table("users").update({"telegram_chat_id": telegram_chat_id}).eq("id", web_user["id"]).execute()

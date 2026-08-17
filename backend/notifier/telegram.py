@@ -1,3 +1,5 @@
+"""텔레그램 메시지 발송."""
+
 import asyncio
 import logging
 

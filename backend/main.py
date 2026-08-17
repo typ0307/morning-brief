@@ -1,3 +1,8 @@
+"""모닝브리프 배치 파이프라인.
+
+수집 → 선별 → 본문 추출 → 요약 → 텔레그램 발송까지의 전체 흐름을 담당한다.
+"""
+
 import argparse
 import html
 import logging

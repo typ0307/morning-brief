@@ -1,3 +1,9 @@
+"""텔레그램 봇.
+
+구독 관리(/subscribe, /unsubscribe, /list), 즉석 요약(/brief),
+웹 계정 연결(/start <code>)을 처리한다.
+"""
+
 import asyncio
 import logging
 from datetime import datetime
