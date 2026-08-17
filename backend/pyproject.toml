@@ -13,4 +13,5 @@ dependencies = [
     "pydantic-settings",
     "python-dotenv",
     "tzdata",
+    "discord-py>=2.7.1",
 ]

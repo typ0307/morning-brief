@@ -1,6 +1,6 @@
 # 모닝브리프 백엔드
 
-기사 수집 → 선별 → 본문 추출 → 요약 → 텔레그램 발송 파이프라인과 텔레그램 봇.
+기사 수집 → 선별 → 본문 추출 → 요약 → 텔레그램/디스코드 발송 파이프라인과 봇들.
 
 프로젝트 전체 개요는 [루트 README](../README.md)를 참고하세요.
 
@@ -9,7 +9,7 @@
 - Python 3.14 (`.python-version`에 명시)
 - [uv](https://docs.astral.sh/uv/) (의존성·가상환경 관리)
 - Supabase 프로젝트
-- 외부 API: 네이버 뉴스 검색, 텔레그램 봇, LLM(DeepSeek 또는 OpenRouter)
+- 외부 API: 네이버 뉴스 검색, 텔레그램 봇, 디스코드 봇, LLM(DeepSeek 또는 OpenRouter)
 
 ## 디렉터리 구조
 
@@ -17,10 +17,11 @@
 ai/            LLM 어댑터(OpenAI 호환), 프롬프트, JSON 파싱
 collectors/    네이버 뉴스 수집기
 db/            Supabase DB 레이어
-notifier/      텔레그램 발송
-main.py        배치 파이프라인 (--dry-run 지원)
-bot.py         텔레그램 봇
-seed.py        키워드/구독 시드
+notifier/      텔레그램/디스코드 발송
+main.py          배치 파이프라인 (--dry-run 지원)
+telegram_bot.py  텔레그램 봇
+discord_bot.py   디스코드 봇
+seed.py          키워드/구독 시드
 ```
 
 ## 설정
@@ -43,6 +44,8 @@ cp .env.example .env               # 아래 환경변수 값 채우기
 | `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | 네이버 뉴스 검색 API 키 |
 | `TELEGRAM_BOT_TOKEN` | BotFather에서 발급한 봇 토큰 |
 | `ADMIN_CHAT_ID` | (선택) 파이프라인 실패 알림 수신 chat_id |
+| `DISCORD_BOT_TOKEN` | (선택) Discord Developer Portal에서 발급한 봇 토큰 (미설정 시 Discord 발송/봇 비활성화) |
+| `ADMIN_DISCORD_USER_ID` | (선택) 디스코드 봇 `!refresh` 관리자 판정에 사용하는 discord user id |
 | `MAX_ARTICLES_PER_TOPIC` | 키워드별 요약에 사용할 기사 수 |
 | `MAX_CANDIDATES_PER_TOPIC` | LLM 선별 대상 후보 기사 수 |
 | `MAX_ARTICLE_AGE_HOURS` | 이 시간보다 오래된 기사 제외 (0이면 비활성화) |
@@ -52,9 +55,10 @@ cp .env.example .env               # 아래 환경변수 값 채우기
 ## 실행
 
 ```bash
-uv run python main.py --dry-run   # 수집~요약까지 실행, 텔레그램 미발송(콘솔 출력)
+uv run python main.py --dry-run   # 수집~요약까지 실행, 발송 미수행(콘솔 출력)
 uv run python main.py             # 실제 발송
-uv run python bot.py              # 텔레그램 봇 실행
+uv run python telegram_bot.py       # 텔레그램 봇 실행
+uv run python discord_bot.py      # 디스코드 봇 실행
 
 # 시드 (기존 chat_id 구독자에게 키워드 구독 생성)
 SEED_KEYWORDS=애플,삼성전자 SEED_CHAT_ID=<chat_id> uv run python seed.py
@@ -70,3 +74,20 @@ SEED_KEYWORDS=애플,삼성전자 SEED_CHAT_ID=<chat_id> uv run python seed.py
 | `/list` | 내 구독 목록 |
 | `/brief <키워드>` | 해당 키워드 바로 요약 |
 | `/help` | 도움말 |
+
+## 디스코드 봇 명령어
+
+디스코드 봇은 `!` 접두사를 사용하며, 봇과 같은 서버가 있어야 DM을 주고받을 수 있습니다.
+
+| 명령어 | 설명 |
+| --- | --- |
+| `!start <code>` | 웹에서 발급한 코드로 계정 연결 (DM에 코드만 보내도 연결) |
+| `!subscribe <키워드>` | 토픽 구독 |
+| `!unsubscribe <키워드>` | 토픽 구독 취소 |
+| `!list` | 내 구독 목록 |
+| `!brief <키워드>` | 해당 키워드 바로 요약 |
+| `!help` | 도움말 |
+
+디스코드 봇 설정 시 Discord Developer Portal에서 **Message Content Intent**를 켜야
+`!` 명령어와 코드 DM을 수신할 수 있습니다. 봇 초대 링크는 프론트엔드의
+`NEXT_PUBLIC_DISCORD_BOT_INVITE_URL`에 등록합니다.

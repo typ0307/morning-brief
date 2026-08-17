@@ -10,10 +10,19 @@ import ConnectionCard, {
 type Props = {
   userId: string;
   authUserId: string;
+  discordUserId: string | null;
+  inviteUrl: string | null;
 };
 
-export default function DiscordLink({ userId, authUserId }: Props) {
-  const [status, setStatus] = useState<ConnectionStatus>("idle");
+export default function DiscordLink({
+  userId,
+  authUserId,
+  discordUserId,
+  inviteUrl,
+}: Props) {
+  const [status, setStatus] = useState<ConnectionStatus>(
+    discordUserId ? "linked" : "idle"
+  );
   const [code, setCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -41,10 +50,6 @@ export default function DiscordLink({ userId, authUserId }: Props) {
     }
     return false;
   }, [authUserId, stopPolling]);
-
-  useEffect(() => {
-    checkLinked();
-  }, [checkLinked]);
 
   useEffect(() => {
     if (status !== "pending") return;
@@ -108,12 +113,24 @@ export default function DiscordLink({ userId, authUserId }: Props) {
       pendingContent={
         code ? (
           <div className="mt-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
-            <p className="mb-2">디스코드 봇에 다음 코드를 입력해 주세요.</p>
+            <p className="mb-2">
+              디스코드 봇의 DM으로 다음 코드를 보내면 계정이 연결됩니다.
+            </p>
             <p className="font-mono text-lg font-bold tracking-widest">
               {code}
             </p>
+            {inviteUrl && (
+              <a
+                href={inviteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block font-medium underline"
+              >
+                봇 초대 링크 (서버에 봇 추가 후 DM으로 코드 전송)
+              </a>
+            )}
             <p className="mt-2 text-xs text-blue-600">
-              디스코드 봇 연동은 준비 중입니다.
+              봇과 같은 서버가 없으면 DM을 받을 수 없습니다.
             </p>
           </div>
         ) : undefined

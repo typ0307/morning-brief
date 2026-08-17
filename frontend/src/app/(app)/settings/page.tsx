@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const { row } = await getCurrentUser();
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? null;
+  const discordInviteUrl =
+    process.env.NEXT_PUBLIC_DISCORD_BOT_INVITE_URL ?? null;
 
   if (!row) {
     return (
@@ -30,6 +32,8 @@ export default async function SettingsPage() {
           <DiscordLink
             userId={row.id}
             authUserId={row.auth_user_id ?? ""}
+            discordUserId={row.discord_user_id ?? null}
+            inviteUrl={discordInviteUrl}
           />
         </div>
       </div>

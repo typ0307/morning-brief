@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     naver_client_secret: str | None = None
     telegram_bot_token: str
     admin_chat_id: str | None = None
+    discord_bot_token: str | None = None
+    admin_discord_user_id: str | None = None
     max_articles_per_topic: int = 5
     max_candidates_per_topic: int = 20
     max_article_age_hours: int = 48

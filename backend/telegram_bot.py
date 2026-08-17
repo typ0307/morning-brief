@@ -22,6 +22,7 @@ from main import (
     is_relevant,
     run_pipeline,
 )
+from notifier.discord import DiscordNotifier
 from notifier.telegram import TelegramNotifier
 
 logger = logging.getLogger("morning-brief-bot")
@@ -152,11 +153,12 @@ async def refresh(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     target = f" ({keyword})" if keyword else ""
     await _reply(update, f"갱신 실행 시작{target}...")
     notifier = TelegramNotifier(settings.telegram_bot_token)
+    discord_notifier = DiscordNotifier(settings.discord_bot_token) if settings.discord_bot_token else None
     brief_date = datetime.now(KST).date()
 
     try:
         summary = await asyncio.to_thread(
-            run_pipeline, db, ai, notifier, brief_date, keyword or None, False
+            run_pipeline, db, ai, notifier, discord_notifier, brief_date, keyword or None, False
         )
     except Exception as e:
         logger.exception("refresh 실패")

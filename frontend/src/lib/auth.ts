@@ -4,6 +4,7 @@ export type CurrentUserRow = {
   id: string;
   auth_user_id: string | null;
   telegram_chat_id: string | null;
+  discord_user_id: string | null;
 };
 
 export async function getCurrentUser() {
@@ -18,7 +19,7 @@ export async function getCurrentUser() {
 
   const { data: row } = await supabase
     .from("users")
-    .select("id, auth_user_id, telegram_chat_id")
+    .select("id, auth_user_id, telegram_chat_id, discord_user_id")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 

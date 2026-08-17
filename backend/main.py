@@ -20,6 +20,7 @@ from collectors.base import Article
 from collectors.naver_news import NaverNewsCollector
 from config import settings
 from db.supabase import SupabaseDB
+from notifier.discord import DiscordNotifier
 from notifier.telegram import TelegramNotifier
 
 KST = ZoneInfo("Asia/Seoul")
@@ -133,12 +134,42 @@ def format_message(keyword: str, brief_date: str, summary: dict[str, Any], artic
     return msg
 
 
+def format_discord_message(keyword: str, brief_date: str, summary: dict[str, Any], articles: list[dict[str, Any]]) -> str:
+    lines = [
+        f"📰 [{keyword}] 아침 브리핑 ({brief_date})",
+        str(summary.get("title") or keyword),
+    ]
+    for s in summary.get("summary", []):
+        if str(s).strip():
+            lines.append(f"- {s}")
+
+    limit = 2000
+    msg = "\n".join(lines)
+    if len(msg) > limit:
+        return msg[: limit - 3] + "..."
+
+    if not articles:
+        return msg
+
+    links = []
+    for a in articles[:5]:
+        title = (a.get("title") or "기사")[:40].replace("]", r"\]")
+        links.append(f"[{title}]({a['url']})")
+
+    for n in range(len(links), 0, -1):
+        candidate = msg + "\n출처: " + " | ".join(links[:n])
+        if len(candidate) <= limit:
+            return candidate
+    return msg
+
+
 def process_topic(
     topic: dict[str, Any],
     brief_date,
     db: SupabaseDB,
     ai: OpenAICompatAdapter,
     notifier: TelegramNotifier,
+    discord_notifier: DiscordNotifier | None,
     dry_run: bool,
 ) -> dict[str, Any]:
     topic_id = topic["id"]
@@ -193,20 +224,34 @@ def process_topic(
     deliveries = db.get_deliveries(briefing["id"])
     sent_user_ids = {d["user_id"] for d in deliveries if d["status"] == "sent"}
     msg = format_message(keyword, brief_date_str, briefing["summary"], sources)
+    discord_msg = format_discord_message(keyword, brief_date_str, briefing["summary"], sources)
 
     sent = 0
     failed = 0
     for sub in subscribers:
         if sub["id"] in sent_user_ids:
             continue
-        if not sub.get("telegram_chat_id"):
-            logger.info("텔레그램 미연결 구독자 건너뜀: user_id=%s", sub["id"])
+        telegram_chat_id = sub.get("telegram_chat_id")
+        discord_user_id = sub.get("discord_user_id")
+        if not telegram_chat_id and not discord_user_id:
+            logger.info("연결 채널 없는 구독자 건너뜀: user_id=%s", sub["id"])
             continue
         if dry_run:
-            logger.info("[dry-run] 발송 대상 chat_id=%s:\n%s", sub["telegram_chat_id"], msg)
+            logger.info("[dry-run] 발송 대상 telegram=%s discord=%s:\n%s", telegram_chat_id, discord_user_id, msg)
             sent += 1
             continue
-        ok = notifier.send(sub["telegram_chat_id"], msg, parse_mode="HTML")
+
+        ok_telegram = (
+            notifier.send(telegram_chat_id, msg, parse_mode="HTML")
+            if telegram_chat_id
+            else True
+        )
+        ok_discord = (
+            discord_notifier.send(discord_user_id, discord_msg)
+            if discord_user_id and discord_notifier
+            else True
+        )
+        ok = ok_telegram and ok_discord
         db.record_delivery(briefing["id"], sub["id"], "sent" if ok else "failed")
         if ok:
             sent += 1
@@ -239,6 +284,7 @@ def run_pipeline(
     db: SupabaseDB,
     ai: OpenAICompatAdapter,
     notifier: TelegramNotifier,
+    discord_notifier: DiscordNotifier | None,
     brief_date,
     keyword: str | None = None,
     dry_run: bool = False,
@@ -256,7 +302,7 @@ def run_pipeline(
 
     for topic in topics:
         try:
-            result = process_topic(topic, brief_date, db, ai, notifier, dry_run)
+            result = process_topic(topic, brief_date, db, ai, notifier, discord_notifier, dry_run)
             total_sent += result.get("sent", 0)
             total_failed += result.get("failed", 0)
         except Exception as e:
@@ -281,11 +327,12 @@ def main() -> int:
     db = SupabaseDB(settings.supabase_url, settings.supabase_service_role_key)
     ai = build_llm()
     notifier = TelegramNotifier(settings.telegram_bot_token)
+    discord_notifier = DiscordNotifier(settings.discord_bot_token) if settings.discord_bot_token else None
 
     brief_date = datetime.now(KST).date()
     logger.info("시작: date=%s dry_run=%s", brief_date, args.dry_run)
 
-    summary = run_pipeline(db, ai, notifier, brief_date, dry_run=args.dry_run)
+    summary = run_pipeline(db, ai, notifier, discord_notifier, brief_date, dry_run=args.dry_run)
 
     logger.info(
         "종료: topics=%d sent=%d failed=%d failures=%d",

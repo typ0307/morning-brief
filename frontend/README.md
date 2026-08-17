@@ -37,6 +37,7 @@ npm run dev                  # http://localhost:3000
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL (backend의 `SUPABASE_URL`과 동일) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon public key (브라우저 노출 가능, **service_role 키 금지**) |
 | `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | 텔레그램 봇 username (`@` 없이) |
+| `NEXT_PUBLIC_DISCORD_BOT_INVITE_URL` | (선택) 디스코드 봇 OAuth2 초대 링크 (`https://discord.com/api/oauth2/authorize?client_id=<BOT_CLIENT_ID>&scope=bot&permissions=0`) |
 
 ### Supabase Auth 설정
 

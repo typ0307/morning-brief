@@ -107,6 +107,14 @@ class SupabaseDB:
             .data[0]
         )
 
+    def upsert_discord_user(self, discord_user_id: str) -> dict[str, Any]:
+        return (
+            self.client.table("users")
+            .upsert({"discord_user_id": discord_user_id}, on_conflict="discord_user_id")
+            .execute()
+            .data[0]
+        )
+
     def subscribe(self, user_id: str, topic_id: str) -> None:
         self.client.table("subscriptions").upsert(
             {"user_id": user_id, "topic_id": topic_id}, on_conflict="user_id,topic_id"
@@ -134,6 +142,12 @@ class SupabaseDB:
         return rows[0] if rows else None
 
     def link_telegram(self, code: str, telegram_chat_id: str) -> dict[str, Any]:
+        return self._link_bot(code, "telegram_chat_id", telegram_chat_id)
+
+    def link_discord(self, code: str, discord_user_id: str) -> dict[str, Any]:
+        return self._link_bot(code, "discord_user_id", discord_user_id)
+
+    def _link_bot(self, code: str, field: str, value: str) -> dict[str, Any]:
         rows = self.client.table("link_codes").select("*").eq("code", code).execute().data
         if not rows:
             return {"ok": False, "reason": "invalid"}
@@ -164,7 +178,7 @@ class SupabaseDB:
             {"used_at": datetime.now(timezone.utc).isoformat()}
         ).eq("id", code_row["id"]).execute()
 
-        bot_users = self.client.table("users").select("*").eq("telegram_chat_id", telegram_chat_id).execute().data
+        bot_users = self.client.table("users").select("*").eq(field, value).execute().data
         bot_user = bot_users[0] if bot_users else None
 
         if bot_user and bot_user["id"] != web_user["id"]:
@@ -179,5 +193,5 @@ class SupabaseDB:
             self.client.table("users").update({"auth_user_id": auth_user_id}).eq("id", bot_user["id"]).execute()
             return {"ok": True, "user_id": bot_user["id"]}
 
-        self.client.table("users").update({"telegram_chat_id": telegram_chat_id}).eq("id", web_user["id"]).execute()
+        self.client.table("users").update({field: value}).eq("id", web_user["id"]).execute()
         return {"ok": True, "user_id": web_user["id"]}
