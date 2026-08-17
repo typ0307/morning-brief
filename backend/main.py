@@ -222,38 +222,42 @@ def process_topic(
         return {"status": "no_subscribers"}
 
     deliveries = db.get_deliveries(briefing["id"])
-    sent_user_ids = {d["user_id"] for d in deliveries if d["status"] == "sent"}
+    sent_keys = {(d["user_id"], d.get("channel") or "telegram") for d in deliveries if d["status"] == "sent"}
     msg = format_message(keyword, brief_date_str, briefing["summary"], sources)
     discord_msg = format_discord_message(keyword, brief_date_str, briefing["summary"], sources)
 
     sent = 0
     failed = 0
     for sub in subscribers:
-        if sub["id"] in sent_user_ids:
-            continue
+        user_id = sub["id"]
         telegram_chat_id = sub.get("telegram_chat_id")
         discord_user_id = sub.get("discord_user_id")
-        if not telegram_chat_id and not discord_user_id:
-            logger.info("연결 채널 없는 구독자 건너뜀: user_id=%s", sub["id"])
+
+        channels = []
+        if telegram_chat_id and (user_id, "telegram") not in sent_keys:
+            channels.append(("telegram", telegram_chat_id))
+        if discord_user_id and discord_notifier and (user_id, "discord") not in sent_keys:
+            channels.append(("discord", discord_user_id))
+
+        if not channels:
+            logger.info("발송 대상 없음(미연결 또는 기발송): user_id=%s", user_id)
             continue
+
         if dry_run:
-            logger.info("[dry-run] 발송 대상 telegram=%s discord=%s:\n%s", telegram_chat_id, discord_user_id, msg)
+            logger.info("[dry-run] 발송 대상 user_id=%s channels=%s:\n%s", user_id, channels, msg)
             sent += 1
             continue
 
-        ok_telegram = (
-            notifier.send(telegram_chat_id, msg, parse_mode="HTML")
-            if telegram_chat_id
-            else True
-        )
-        ok_discord = (
-            discord_notifier.send(discord_user_id, discord_msg)
-            if discord_user_id and discord_notifier
-            else True
-        )
-        ok = ok_telegram and ok_discord
-        db.record_delivery(briefing["id"], sub["id"], "sent" if ok else "failed")
-        if ok:
+        ok_all = True
+        for channel, target_id in channels:
+            if channel == "telegram":
+                ok = notifier.send(target_id, msg, parse_mode="HTML")
+            else:
+                ok = discord_notifier.send(target_id, discord_msg)
+            db.record_delivery(briefing["id"], user_id, channel, "sent" if ok else "failed")
+            ok_all = ok_all and ok
+
+        if ok_all:
             sent += 1
         else:
             failed += 1

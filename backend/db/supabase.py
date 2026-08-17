@@ -87,14 +87,15 @@ class SupabaseDB:
     def get_deliveries(self, briefing_id: str) -> list[dict[str, Any]]:
         return self.client.table("deliveries").select("*").eq("briefing_id", briefing_id).execute().data
 
-    def record_delivery(self, briefing_id: str, user_id: str, status: str) -> None:
+    def record_delivery(self, briefing_id: str, user_id: str, channel: str, status: str) -> None:
         payload = {
             "briefing_id": briefing_id,
             "user_id": user_id,
+            "channel": channel,
             "status": status,
             "sent_at": datetime.now(timezone.utc).isoformat() if status == "sent" else None,
         }
-        self.client.table("deliveries").upsert(payload, on_conflict="briefing_id,user_id").execute()
+        self.client.table("deliveries").upsert(payload, on_conflict="briefing_id,user_id,channel").execute()
 
     def upsert_topic(self, keyword: str) -> dict[str, Any]:
         return self.client.table("topics").upsert({"keyword": keyword}, on_conflict="keyword").execute().data[0]
