@@ -21,16 +21,13 @@ notifier/      텔레그램 발송
 main.py        배치 파이프라인 (--dry-run 지원)
 bot.py         텔레그램 봇
 seed.py        키워드/구독 시드
-schema.sql     신규 설치용 전체 스키마 (RLS 포함)
-migrations/    기존 DB 마이그레이션 SQL (번호 순서대로 실행)
 ```
 
 ## 설정
 
 ```bash
 cd backend
-uv venv                            # .python-version(3.14) 기반으로 .venv 생성
-uv pip install -r requirements.txt
+uv sync                            # pyproject.toml 기반으로 .venv 생성 + 의존성 설치
 cp .env.example .env               # 아래 환경변수 값 채우기
 ```
 
@@ -51,14 +48,6 @@ cp .env.example .env               # 아래 환경변수 값 채우기
 | `MAX_ARTICLE_AGE_HOURS` | 이 시간보다 오래된 기사 제외 (0이면 비활성화) |
 | `SUMMARY_LINES` | 요약 줄 수 |
 | `REQUIRE_ALL_KEYWORD_TOKENS` | 키워드의 모든 단어가 포함된 기사만 통과 |
-
-## DB 스키마 적용
-
-- **신규 설치**: Supabase SQL Editor에서 `schema.sql` 실행
-- **기존 DB**: `migrations/` 파일을 번호 순서대로 실행
-  - `001_articles_topic_url.sql` — articles URL 제약을 `(topic_id, url)` 복합 UNIQUE로 변경
-  - `002_web_auth.sql` — users 확장, link_codes, RLS 정책, 가입 트리거
-  - `003_backfill_existing_users.sql` — 트리거 적용 전에 가입한 기존 auth.users 백필
 
 ## 실행
 

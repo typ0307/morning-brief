@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import TelegramLink from "@/components/telegram-link";
+import DiscordLink from "@/components/discord-link";
 
 export const dynamic = "force-dynamic";
 
@@ -19,17 +20,18 @@ export default async function SettingsPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="mb-4 text-xl font-bold">설정</h1>
-        <TelegramLink
-          userId={row.id}
-          authUserId={row.auth_user_id ?? ""}
-          telegramChatId={row.telegram_chat_id ?? null}
-          botUsername={botUsername}
-        />
-      </div>
-
-      <div className="rounded-xl border border-zinc-200 bg-white p-5">
-        <h2 className="mb-3 font-semibold">디스코드 연결</h2>
-        <p className="text-sm text-zinc-500">준비 중입니다.</p>
+        <div className="flex flex-col gap-4">
+          <TelegramLink
+            userId={row.id}
+            authUserId={row.auth_user_id ?? ""}
+            telegramChatId={row.telegram_chat_id ?? null}
+            botUsername={botUsername}
+          />
+          <DiscordLink
+            userId={row.id}
+            authUserId={row.auth_user_id ?? ""}
+          />
+        </div>
       </div>
     </div>
   );

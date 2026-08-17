@@ -1,0 +1,16 @@
+[project]
+name = "morning-brief-backend"
+version = "0.1.0"
+description = "모닝브리프 백엔드: 기사 수집 → 선별 → 요약 → 텔레그램 발송"
+requires-python = ">=3.14"
+dependencies = [
+    "beautifulsoup4",
+    "requests",
+    "supabase",
+    "python-telegram-bot",
+    "openai",
+    "pydantic",
+    "pydantic-settings",
+    "python-dotenv",
+    "tzdata",
+]

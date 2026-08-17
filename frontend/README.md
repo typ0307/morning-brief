@@ -52,7 +52,7 @@ npm run dev                  # http://localhost:3000
 | --- | --- |
 | `/` | 내 구독 키워드의 브리핑 목록 (날짜 desc, 토픽 필터 칩, 제목·요약·sentiment·출처 링크) |
 | `/keywords` | 내 구독 목록, 키워드 추가(topics upsert + subscribe), 구독 해지 |
-| `/settings` | 텔레그램 계정 연결 (8자리 코드 발급 → `t.me/<bot>?start=<code>` → 완료 감지), 디스코드 placeholder |
+| `/settings` | 텔레그램/디스코드 계정 연결·해제 (8자리 코드 발급 → 완료 감지) |
 | `/login` | Google/Kakao OAuth 로그인 |
 
 ## 빌드/배포
