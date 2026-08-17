@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 모닝브리프 프론트엔드
 
-## Getting Started
+Next.js 16.3.1 (App Router, TypeScript, Tailwind) 웹 프론트엔드.
+별도 API 서버 없이 **Supabase에 직접 접근**(RLS)합니다.
 
-First, run the development server:
+프로젝트 전체 개요는 [루트 README](../README.md)를 참고하세요.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 요구 사항
+
+- Node.js 20+
+- Supabase 프로젝트 (Auth: Google/Kakao)
+
+## 디렉터리 구조
+
+```
+src/app/              페이지 (/, /login, /keywords, /settings, /auth/callback)
+  (app)/              인증 사용자 전용 레이아웃(네비게이션 포함)
+  auth/callback/      OAuth code exchange
+src/components/       UI 컴포넌트
+src/lib/              Supabase 클라이언트, 타입, 인증 헬퍼
+src/proxy.ts          세션 갱신 + 비로그인 리다이렉트 (Next 16의 middleware)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 설정
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cd frontend
+npm install
+cp .env.example .env.local   # 아래 환경변수 값 채우기
+npm run dev                  # http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 환경변수 (`frontend/.env.local`)
 
-## Learn More
+| 변수 | 설명 |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL (backend의 `SUPABASE_URL`과 동일) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon public key (브라우저 노출 가능, **service_role 키 금지**) |
+| `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | 텔레그램 봇 username (`@` 없이) |
 
-To learn more about Next.js, take a look at the following resources:
+### Supabase Auth 설정
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Authentication > Providers**에서 Google, Kakao 활성화
+   (각각 개발자 콘솔에서 클라이언트 ID/시크릿 발급)
+2. **Authentication > URL Configuration**에 등록
+   - Site URL: `http://localhost:3000` (운영: Vercel 도메인)
+   - Redirect URL: `http://localhost:3000/auth/callback` (운영: `https://<domain>/auth/callback`)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 페이지
 
-## Deploy on Vercel
+| 경로 | 설명 |
+| --- | --- |
+| `/` | 브리핑 목록 (날짜 desc, 토픽 필터 칩, 제목·요약·sentiment·출처 링크) |
+| `/keywords` | 내 구독 목록, 키워드 추가(topics upsert + subscribe), 구독 해지 |
+| `/settings` | 텔레그램 계정 연결 (8자리 코드 발급 → `t.me/<bot>?start=<code>` → 완료 감지), 디스코드 placeholder |
+| `/login` | Google/Kakao OAuth 로그인 |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 빌드/배포
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build   # 프로덕션 빌드
+npm run lint    # ESLint
+```
+
+Vercel 배포 시 `NEXT_PUBLIC_*` 환경변수를 프로젝트 설정에 동일하게 등록합니다.
+
+## 인증 흐름
+
+- 비로그인 사용자는 `src/proxy.ts`가 `/login`으로 리다이렉트
+- `/login`에서 `signInWithOAuth` → Supabase OAuth → `/auth/callback`에서 `exchangeCodeForSession`
+- 최초 로그인 시 Supabase 트리거가 `public.users` 행을 자동 생성(`auth_user_id`)
