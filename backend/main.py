@@ -235,6 +235,42 @@ def build_llm() -> OpenAICompatAdapter:
     )
 
 
+def run_pipeline(
+    db: SupabaseDB,
+    ai: OpenAICompatAdapter,
+    notifier: TelegramNotifier,
+    brief_date,
+    keyword: str | None = None,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """전체(또는 특정 키워드) 파이프라인 실행 후 요약을 반환한다."""
+    topics = db.list_active_topics()
+    if keyword:
+        topics = [t for t in topics if t["keyword"] == keyword]
+    if not topics:
+        return {"topics": 0, "sent": 0, "failed": 0, "failures": []}
+
+    failures: list[tuple[str, str]] = []
+    total_sent = 0
+    total_failed = 0
+
+    for topic in topics:
+        try:
+            result = process_topic(topic, brief_date, db, ai, notifier, dry_run)
+            total_sent += result.get("sent", 0)
+            total_failed += result.get("failed", 0)
+        except Exception as e:
+            logger.exception("토픽 처리 실패: %s", topic["keyword"])
+            failures.append((topic["keyword"], str(e)))
+
+    return {
+        "topics": len(topics),
+        "sent": total_sent,
+        "failed": total_failed,
+        "failures": failures,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="모닝브리프 백엔드 파이프라인")
     parser.add_argument("--dry-run", action="store_true", help="텔레그램 미발송, 콘솔 출력만")
@@ -249,34 +285,20 @@ def main() -> int:
     brief_date = datetime.now(KST).date()
     logger.info("시작: date=%s dry_run=%s", brief_date, args.dry_run)
 
-    topics = db.list_active_topics()
-    if not topics:
-        logger.info("활성 토픽 없음")
-        return 0
-
-    failures: list[tuple[str, str]] = []
-    total_sent = 0
-    total_failed = 0
-
-    for topic in topics:
-        try:
-            result = process_topic(topic, brief_date, db, ai, notifier, args.dry_run)
-            total_sent += result.get("sent", 0)
-            total_failed += result.get("failed", 0)
-        except Exception as e:
-            logger.exception("토픽 처리 실패: %s", topic["keyword"])
-            failures.append((topic["keyword"], str(e)))
+    summary = run_pipeline(db, ai, notifier, brief_date, dry_run=args.dry_run)
 
     logger.info(
         "종료: topics=%d sent=%d failed=%d failures=%d",
-        len(topics), total_sent, total_failed, len(failures),
+        summary["topics"], summary["sent"], summary["failed"], len(summary["failures"]),
     )
 
-    if failures and settings.admin_chat_id and not args.dry_run:
-        msg = "모닝브리프 토픽 처리 실패:\n" + "\n".join(f"- {k}: {e}" for k, e in failures)
+    if summary["failures"] and settings.admin_chat_id and not args.dry_run:
+        msg = "모닝브리프 토픽 처리 실패:\n" + "\n".join(
+            f"- {k}: {e}" for k, e in summary["failures"]
+        )
         notifier.send(settings.admin_chat_id, msg)
 
-    return 1 if failures else 0
+    return 1 if summary["failures"] else 0
 
 
 if __name__ == "__main__":

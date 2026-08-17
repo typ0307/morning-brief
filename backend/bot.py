@@ -20,7 +20,9 @@ from main import (
     fetch_body,
     format_message,
     is_relevant,
+    run_pipeline,
 )
+from notifier.telegram import TelegramNotifier
 
 logger = logging.getLogger("morning-brief-bot")
 
@@ -137,6 +139,43 @@ async def brief(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await _reply(update, f"요약 생성에 실패했습니다: {e}")
 
 
+async def refresh(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    db: SupabaseDB = context.bot_data["db"]
+    ai = context.bot_data["ai"]
+    chat_id = str(update.effective_chat.id)
+    if settings.admin_chat_id != chat_id:
+        logger.warning("비관리자의 refresh 시도: chat_id=%s", chat_id)
+        await _reply(update, "관리자 전용 명령어입니다.")
+        return
+
+    keyword = _clean_keyword(context.args)
+    target = f" ({keyword})" if keyword else ""
+    await _reply(update, f"갱신 실행 시작{target}...")
+    notifier = TelegramNotifier(settings.telegram_bot_token)
+    brief_date = datetime.now(KST).date()
+
+    try:
+        summary = await asyncio.to_thread(
+            run_pipeline, db, ai, notifier, brief_date, keyword or None, False
+        )
+    except Exception as e:
+        logger.exception("refresh 실패")
+        await _reply(update, f"갱신에 실패했습니다: {e}")
+        return
+
+    if not summary["topics"]:
+        if keyword:
+            await _reply(update, f"'{keyword}' 토픽을 찾을 수 없습니다. (구독된 토픽만 갱신)")
+        else:
+            await _reply(update, "구독된 토픽이 없습니다.")
+        return
+
+    msg = f"갱신 완료: 토픽 {summary['topics']}개, 발송 {summary['sent']}건, 실패 {summary['failed']}건"
+    if summary["failures"]:
+        msg += "\n실패: " + ", ".join(f"{k}: {e}" for k, e in summary["failures"])
+    await _reply(update, msg)
+
+
 async def post_init(application: Application) -> None:
     commands = [
         BotCommand("subscribe", "토픽 구독"),
@@ -169,6 +208,7 @@ def main() -> None:
     app.add_handler(CommandHandler("unsubscribe", unsubscribe))
     app.add_handler(CommandHandler("list", list_cmd))
     app.add_handler(CommandHandler("brief", brief))
+    app.add_handler(CommandHandler("refresh", refresh))
 
     logger.info("봇 시작")
     app.run_polling()
