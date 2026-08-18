@@ -36,6 +36,7 @@ export default function LoginForm({ initialMode = "login" }: Props) {
     setError(null);
     setInfo(null);
     setPassword("");
+    resetCaptcha();
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -59,8 +60,10 @@ export default function LoginForm({ initialMode = "login" }: Props) {
         options: { captchaToken: captchaToken ?? undefined },
       });
       setLoading(false);
-      resetCaptcha();
-      if (error) return setError(error.message);
+      if (error) {
+        resetCaptcha();
+        return setError(error.message);
+      }
       router.push("/");
       router.refresh();
     } else if (mode === "signup") {
@@ -73,8 +76,10 @@ export default function LoginForm({ initialMode = "login" }: Props) {
         },
       });
       setLoading(false);
-      resetCaptcha();
-      if (error) return setError(error.message);
+      if (error) {
+        resetCaptcha();
+        return setError(error.message);
+      }
       setPassword("");
       setInfo(
         "확인 이메일을 보냈습니다. 이메일 링크로 인증한 뒤 로그인해 주세요.",
@@ -85,11 +90,16 @@ export default function LoginForm({ initialMode = "login" }: Props) {
         redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
       });
       setLoading(false);
-      resetCaptcha();
-      if (error) setError(error.message);
-      else setInfo("비밀번호 재설정 링크를 이메일로 보냈습니다.");
+      if (error) {
+        resetCaptcha();
+        setError(error.message);
+      } else {
+        setInfo("비밀번호 재설정 링크를 이메일로 보냈습니다.");
+      }
     }
   }
+
+  const captchaRequired = isTurnstileEnabled && !captchaToken;
 
   return (
     <div className="flex flex-col">
@@ -135,10 +145,15 @@ export default function LoginForm({ initialMode = "login" }: Props) {
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
         {info && <p className="text-sm text-emerald-600">{info}</p>}
+        {captchaRequired && !loading && (
+          <p className="text-xs text-zinc-400">
+            로봇 확인을 완료하면 버튼이 활성화됩니다.
+          </p>
+        )}
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || captchaRequired}
           className="h-14 w-full rounded-xl bg-zinc-900 text-base font-semibold text-white transition-colors hover:bg-zinc-700 disabled:opacity-60"
         >
           {loading
