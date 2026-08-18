@@ -21,3 +21,11 @@ export type SubscriptionRow = {
   topic_id: string;
   topics?: { keyword: string } | null;
 };
+
+export type SendScheduleRow = {
+  id: string;
+  user_id: string;
+  day_times: Record<string, string[]>;
+  enabled: boolean;
+  updated_at: string;
+};

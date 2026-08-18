@@ -22,6 +22,7 @@
 
 백엔드 (배치/봇)
   ├─ main.py       : 수집 → 선별 → 본문 → 요약 → 텔레그램/디스코드 발송 파이프라인
+  ├─ scheduler.py  : 사용자별 발송 일정 스케줄러 (매분 체크, --once/--dry-run)
   ├─ telegram_bot.py: 텔레그램 봇 (/subscribe, /unsubscribe, /list, /brief, /start <code>)
   └─ discord_bot.py: 디스코드 봇 (/subscribe, /brief 등 슬래시 + ! 접두사 명령어)
 ```
@@ -35,6 +36,7 @@
 - `topics` / `briefings` / `articles`: 인증 사용자 모두 열람(카탈로그 모델)
 - `users`: 본인 행만 SELECT/UPDATE
 - `subscriptions`: 본인 행만 SELECT/INSERT/DELETE
+- `send_schedules`: 본인 행만 SELECT/INSERT/UPDATE/DELETE (발송 일정)
 - `link_codes`: 본인 것만 SELECT/INSERT (UPDATE/DELETE는 service_role 전용)
 - `deliveries`: 정책 없음(service_role 전용)
 
@@ -49,3 +51,4 @@
 
 - 웹에서 파이프라인 수동 실행
 - 가입 제한 (필요 시 Supabase 대시보드에서 signup 비활성화로 대응)
+- 토픽별 발송 일정, 사용자별 타임존, Teams 연동

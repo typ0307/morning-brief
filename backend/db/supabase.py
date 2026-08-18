@@ -57,21 +57,22 @@ class SupabaseDB:
             .data
         )
 
-    def get_briefing(self, topic_id: str, brief_date: str) -> dict[str, Any] | None:
+    def get_briefing(self, topic_id: str, brief_date: str, time_slot: str = "") -> dict[str, Any] | None:
         rows = (
             self.client.table("briefings")
             .select("*")
             .eq("topic_id", topic_id)
             .eq("brief_date", brief_date)
+            .eq("time_slot", time_slot)
             .execute()
             .data
         )
         return rows[0] if rows else None
 
-    def create_briefing(self, topic_id: str, brief_date: str, summary: dict[str, Any]) -> dict[str, Any]:
+    def create_briefing(self, topic_id: str, brief_date: str, summary: dict[str, Any], time_slot: str = "") -> dict[str, Any]:
         return (
             self.client.table("briefings")
-            .insert({"topic_id": topic_id, "brief_date": brief_date, "summary": summary})
+            .insert({"topic_id": topic_id, "brief_date": brief_date, "time_slot": time_slot, "summary": summary})
             .execute()
             .data[0]
         )
@@ -141,6 +142,35 @@ class SupabaseDB:
     def get_topic_by_keyword(self, keyword: str) -> dict[str, Any] | None:
         rows = self.client.table("topics").select("*").eq("keyword", keyword).execute().data
         return rows[0] if rows else None
+
+    def get_topic(self, topic_id: str) -> dict[str, Any] | None:
+        rows = self.client.table("topics").select("*").eq("id", topic_id).execute().data
+        return rows[0] if rows else None
+
+    def get_subscribed_topic_ids(self, user_ids: list[str] | set[str]) -> set[str]:
+        ids = list(user_ids)
+        if not ids:
+            return set()
+        subs = self.client.table("subscriptions").select("topic_id").in_("user_id", ids).execute().data
+        return {s["topic_id"] for s in subs}
+
+    def list_enabled_schedules(self) -> list[dict[str, Any]]:
+        return self.client.table("send_schedules").select("*").eq("enabled", True).execute().data
+
+    def get_schedule(self, user_id: str) -> dict[str, Any] | None:
+        rows = self.client.table("send_schedules").select("*").eq("user_id", user_id).execute().data
+        return rows[0] if rows else None
+
+    def upsert_schedule(self, user_id: str, day_times: dict[str, list[str]], enabled: bool) -> dict[str, Any]:
+        return (
+            self.client.table("send_schedules")
+            .upsert(
+                {"user_id": user_id, "day_times": day_times, "enabled": enabled},
+                on_conflict="user_id",
+            )
+            .execute()
+            .data[0]
+        )
 
     def link_telegram(self, code: str, telegram_chat_id: str) -> dict[str, Any]:
         return self._link_bot(code, "telegram_chat_id", telegram_chat_id)

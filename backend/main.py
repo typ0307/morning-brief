@@ -171,12 +171,14 @@ def process_topic(
     notifier: TelegramNotifier,
     discord_notifier: DiscordNotifier | None,
     dry_run: bool,
+    time_slot: str = "",
+    target_user_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     topic_id = topic["id"]
     keyword = topic["keyword"]
     brief_date_str = brief_date.isoformat()
 
-    briefing = db.get_briefing(topic_id, brief_date_str)
+    briefing = db.get_briefing(topic_id, brief_date_str, time_slot)
     sources: list[dict[str, Any]] = []
 
     if briefing is None:
@@ -209,14 +211,24 @@ def process_topic(
             p["body"] = body
             db.update_article_body(p["id"], body)
         summary = ai.summarize(keyword, selected)
-        briefing = db.create_briefing(topic_id, brief_date_str, summary)
-        db.mark_articles_briefed([p["id"] for p in selected], briefing["id"])
-        sources = selected
-        logger.info("브리핑 생성 완료: %s (%s)", keyword, briefing["id"])
+        try:
+            briefing = db.create_briefing(topic_id, brief_date_str, summary, time_slot)
+        except Exception as e:
+            existing_briefing = db.get_briefing(topic_id, brief_date_str, time_slot)
+            if existing_briefing is None:
+                raise
+            logger.warning("브리핑 생성 경합(unique) -> 기존 재사용: %s (%s): %s", keyword, time_slot, e)
+            briefing = existing_briefing
+        else:
+            db.mark_articles_briefed([p["id"] for p in selected], briefing["id"])
+            logger.info("브리핑 생성 완료: %s (%s)", keyword, briefing["id"])
+        sources = db.get_articles_for_briefing(briefing["id"])
     else:
         sources = db.get_articles_for_briefing(briefing["id"])
 
     subscribers = db.list_subscribers(topic_id)
+    if target_user_ids is not None:
+        subscribers = [s for s in subscribers if s["id"] in target_user_ids]
     if not subscribers:
         logger.info("구독자 없음: %s", keyword)
         return {"status": "no_subscribers"}
@@ -315,6 +327,80 @@ def run_pipeline(
 
     return {
         "topics": len(topics),
+        "sent": total_sent,
+        "failed": total_failed,
+        "failures": failures,
+    }
+
+
+def run_scheduled(
+    db: SupabaseDB,
+    ai: OpenAICompatAdapter,
+    notifier: TelegramNotifier,
+    discord_notifier: DiscordNotifier | None,
+    now: datetime,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """사용자별 발송 일정을 검사해 due 슬롯의 사용자에게만 발송한다."""
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=KST)
+    now = now.astimezone(KST)
+    grace = timedelta(minutes=settings.schedule_grace_minutes)
+
+    slot_users: dict[str, set[str]] = {}
+    for s in db.list_enabled_schedules():
+        day_times = s.get("day_times") or {}
+        times = day_times.get(str(now.weekday())) or []
+        for t in times:
+            try:
+                slot_dt = datetime.combine(
+                    now.date(), datetime.strptime(t, "%H:%M").time(), tzinfo=KST
+                )
+            except ValueError:
+                logger.warning("잘못된 시각 형식 무시: user_id=%s time=%s", s["user_id"], t)
+                continue
+            if slot_dt <= now < slot_dt + grace:
+                slot_users.setdefault(t, set()).add(s["user_id"])
+
+    if not slot_users:
+        logger.info("due 일정 없음: weekday=%d now=%s", now.weekday(), now.isoformat())
+        return {"slots": 0, "topics": 0, "sent": 0, "failed": 0, "failures": []}
+
+    failures: list[tuple[str, str]] = []
+    total_sent = 0
+    total_failed = 0
+    total_topics = 0
+
+    for slot, user_ids in sorted(slot_users.items()):
+        logger.info("슬롯 처리 시작: slot=%s users=%d", slot, len(user_ids))
+        topic_ids = db.get_subscribed_topic_ids(user_ids)
+        for topic_id in topic_ids:
+            topic = db.get_topic(topic_id)
+            if topic is None:
+                logger.warning("토픽 조회 실패(삭제됨?): %s", topic_id)
+                continue
+            total_topics += 1
+            try:
+                result = process_topic(
+                    topic,
+                    now.date(),
+                    db,
+                    ai,
+                    notifier,
+                    discord_notifier,
+                    dry_run,
+                    time_slot=slot,
+                    target_user_ids=user_ids,
+                )
+                total_sent += result.get("sent", 0)
+                total_failed += result.get("failed", 0)
+            except Exception as e:
+                logger.exception("슬롯 토픽 처리 실패: slot=%s keyword=%s", slot, topic["keyword"])
+                failures.append((f"{slot} {topic['keyword']}", str(e)))
+
+    return {
+        "slots": len(slot_users),
+        "topics": total_topics,
         "sent": total_sent,
         "failed": total_failed,
         "failures": failures,

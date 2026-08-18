@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import TelegramLink from "@/components/telegram-link";
 import DiscordLink from "@/components/discord-link";
+import ScheduleEditor from "@/components/schedule-editor";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export default async function SettingsPage() {
             discordUserId={row.discord_user_id ?? null}
             inviteUrl={discordInviteUrl}
           />
+          <ScheduleEditor userId={row.id} />
         </div>
       </div>
     </div>

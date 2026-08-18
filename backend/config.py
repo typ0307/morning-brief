@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     max_article_age_hours: int = 48
     summary_lines: int = 5
     require_all_keyword_tokens: bool = True
+    schedule_grace_minutes: int = 30
 
 
 settings = Settings()
