@@ -29,3 +29,13 @@ export type SendScheduleRow = {
   enabled: boolean;
   updated_at: string;
 };
+
+export type BriefingStatus = {
+  latestDate: string | null;
+};
+
+export type RecommendedKeyword = {
+  id: string;
+  keyword: string;
+  briefCount: number;
+};
