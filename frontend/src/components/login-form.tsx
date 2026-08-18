@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { checkEmailRegistered } from "@/lib/auth-actions";
 import Turnstile, { isTurnstileEnabled } from "@/components/turnstile";
 
 type Mode = "login" | "signup" | "forgot";
@@ -14,6 +15,19 @@ const TITLES: Record<Mode, string> = {
   signup: "이메일로 가입해 주세요",
   forgot: "비밀번호를 재설정해 주세요",
 };
+
+function friendlyAuthError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("invalid login credentials"))
+    return "이메일 또는 비밀번호가 올바르지 않습니다.";
+  if (lower.includes("user already registered"))
+    return "이미 가입된 이메일입니다.";
+  if (lower.includes("email not confirmed"))
+    return "이메일 인증이 완료되지 않았습니다.";
+  if (lower.includes("password should be at least"))
+    return "비밀번호는 8자 이상이어야 합니다.";
+  return message;
+}
 
 export default function LoginForm({ initialMode = "login" }: Props) {
   const router = useRouter();
@@ -62,11 +76,17 @@ export default function LoginForm({ initialMode = "login" }: Props) {
       setLoading(false);
       if (error) {
         resetCaptcha();
-        return setError(error.message);
+        return setError(friendlyAuthError(error.message));
       }
       router.push("/");
       router.refresh();
     } else if (mode === "signup") {
+      const { registered } = await checkEmailRegistered(email.trim());
+      if (registered) {
+        setLoading(false);
+        switchMode("login");
+        return setError("이미 가입된 이메일입니다. 로그인해 주세요.");
+      }
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -78,7 +98,7 @@ export default function LoginForm({ initialMode = "login" }: Props) {
       setLoading(false);
       if (error) {
         resetCaptcha();
-        return setError(error.message);
+        return setError(friendlyAuthError(error.message));
       }
       setPassword("");
       setInfo(
@@ -92,7 +112,7 @@ export default function LoginForm({ initialMode = "login" }: Props) {
       setLoading(false);
       if (error) {
         resetCaptcha();
-        setError(error.message);
+        setError(friendlyAuthError(error.message));
       } else {
         setInfo("비밀번호 재설정 링크를 이메일로 보냈습니다.");
       }
