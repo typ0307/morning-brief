@@ -5,7 +5,7 @@ import type { Provider as SupabaseProvider } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { generateNaverAuthUrl } from "@/lib/naver";
 
-type Provider = "google" | "kakao" | "naver" | "apple";
+type Provider = "google" | "naver";
 
 function GoogleLogo() {
   return (
@@ -48,38 +48,12 @@ function NaverLogo() {
   );
 }
 
-function KakaoLogo() {
-  return (
-    <svg className="h-5 w-5" viewBox="0 0 24 24">
-      <path
-        fill="#191919"
-        d="M12 3C6.48 3 2 6.58 2 11c0 2.39 1.23 4.5 3.16 5.9L4.2 20.5c-.1.3.2.57.5.44l4.7-2.4c.86.22 1.73.33 2.6.33 5.52 0 10-3.58 10-8S17.52 3 12 3z"
-      />
-    </svg>
-  );
-}
-
-function AppleLogo() {
-  return (
-    <svg className="h-5 w-5 fill-current" viewBox="0 0 384 512">
-      <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zM262 104.5c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
-    </svg>
-  );
-}
-
 const PROVIDERS: {
   id: Provider;
   label: string;
   className: string;
   logo: React.ReactNode;
 }[] = [
-  {
-    id: "kakao",
-    label: "카카오로 시작하기",
-    className:
-      "border-transparent bg-[#FEE500] text-[#191919] hover:brightness-95",
-    logo: <KakaoLogo />,
-  },
   {
     id: "naver",
     label: "네이버로 시작하기",
@@ -91,12 +65,6 @@ const PROVIDERS: {
     label: "구글로 시작하기",
     className: "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50",
     logo: <GoogleLogo />,
-  },
-  {
-    id: "apple",
-    label: "애플로 시작하기",
-    className: "border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50",
-    logo: <AppleLogo />,
   },
 ];
 
@@ -132,19 +100,17 @@ export default function LoginButtons() {
 
   return (
     <div className="flex flex-col gap-3">
-      {PROVIDERS.filter((p) => p.id !== "kakao" && p.id !== "apple").map(
-        (p) => (
-          <button
-            key={p.id}
-            onClick={() => signIn(p.id)}
-            disabled={loading !== null}
-            className={`relative flex h-14 w-full items-center justify-center rounded-xl border text-base font-semibold transition-colors disabled:opacity-60 ${p.className}`}
-          >
-            <span className="absolute left-5">{p.logo}</span>
-            <span>{loading === p.id ? "로그인 중..." : p.label}</span>
-          </button>
-        ),
-      )}
+      {PROVIDERS.map((p) => (
+        <button
+          key={p.id}
+          onClick={() => signIn(p.id)}
+          disabled={loading !== null}
+          className={`relative flex h-14 w-full items-center justify-center rounded-xl border text-base font-semibold transition-colors disabled:opacity-60 ${p.className}`}
+        >
+          <span className="absolute left-5">{p.logo}</span>
+          <span>{loading === p.id ? "로그인 중..." : p.label}</span>
+        </button>
+      ))}
     </div>
   );
 }
