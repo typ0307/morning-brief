@@ -15,13 +15,13 @@
 
 ```
 ai/            LLM 어댑터(OpenAI 호환), 프롬프트, JSON 파싱
+bots/          텔레그램/디스코드 봇 (python -m bots.<모듈명>)
 collectors/    네이버 뉴스 수집기
 db/            Supabase DB 레이어
 notifier/      텔레그램/디스코드 발송
 main.py          배치 파이프라인 (--dry-run 지원)
+start.py         스케줄러 + 봇들 통합 실행 (비정상 종료 시 재시작)
 scheduler.py     사용자별 발송 일정 스케줄러 (--once/--dry-run 지원)
-telegram_bot.py  텔레그램 봇
-discord_bot.py   디스코드 봇
 seed.py          키워드/구독 시드
 ```
 
@@ -59,11 +59,13 @@ cp .env.example .env               # 아래 환경변수 값 채우기
 ```bash
 uv run python main.py --dry-run   # 수집~요약까지 실행, 발송 미수행(콘솔 출력)
 uv run python main.py             # 실제 발송
+uv run python start.py           # 스케줄러 + 텔레그램 봇 + 디스코드 봇 통합 실행
+                                  # (비정상 종료 시 자동 재시작, Ctrl-C로 모두 종료)
 uv run python scheduler.py        # 발송 일정 스케줄러 (상시 실행, 매분 체크)
 uv run python scheduler.py --once          # 1회만 체크 후 종료
 uv run python scheduler.py --once --dry-run  # 발송 없이 due 판정 로그만 확인
-uv run python telegram_bot.py       # 텔레그램 봇 실행
-uv run python discord_bot.py      # 디스코드 봇 실행
+uv run python -m bots.telegram_bot  # 텔레그램 봇 실행
+uv run python -m bots.discord_bot   # 디스코드 봇 실행
 
 # 시드 (기존 chat_id 구독자에게 키워드 구독 생성)
 SEED_KEYWORDS=애플,삼성전자 SEED_CHAT_ID=<chat_id> uv run python seed.py
