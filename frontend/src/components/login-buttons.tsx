@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Provider as SupabaseProvider } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { generateNaverAuthUrl } from "@/lib/naver";
 
 type Provider = "google" | "kakao" | "naver" | "apple";
 
@@ -102,8 +103,22 @@ const PROVIDERS: {
 export default function LoginButtons() {
   const [loading, setLoading] = useState<Provider | null>(null);
 
+  function signInNaver() {
+    const state = crypto.randomUUID();
+    const url = generateNaverAuthUrl({
+      clientId: process.env.NEXT_PUBLIC_NAVER_CLIENT_ID!,
+      redirectUri: `${window.location.origin}/auth/callback/naver`,
+      state,
+    });
+    window.location.assign(url);
+  }
+
   async function signIn(provider: Provider) {
     setLoading(provider);
+    if (provider === "naver") {
+      signInNaver();
+      return;
+    }
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: provider as SupabaseProvider,
@@ -117,7 +132,7 @@ export default function LoginButtons() {
 
   return (
     <div className="flex flex-col gap-3">
-      {PROVIDERS.map((p) => (
+      {PROVIDERS.filter((p) => p.id !== "kakao").map((p) => (
         <button
           key={p.id}
           onClick={() => signIn(p.id)}

@@ -41,11 +41,14 @@ npm run dev                  # http://localhost:3000
 | `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` | 텔레그램 봇 username (`@` 없이) |
 | `NEXT_PUBLIC_DISCORD_BOT_INVITE_URL` | (선택) 디스코드 봇 OAuth2 초대 링크 (`https://discord.com/api/oauth2/authorize?client_id=<BOT_CLIENT_ID>&scope=bot&permissions=0`) |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | (선택) Cloudflare Turnstile 사이트 키. 미설정 시 캡챠 UI 자동 숨김 |
+| `NEXT_PUBLIC_NAVER_CLIENT_ID` | Naver Developers 앱의 Client ID (네이버 로그인) |
+| `NAVER_CLIENT_SECRET` | Naver Developers 앱의 Client Secret (**서버 전용**) |
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role 키 (**서버 전용** — Naver 유저 생성에 사용, 브라우저 노출 금지) |
 
 ### Supabase Auth 설정
 
-1. **Authentication > Providers**에서 카카오/네이버/구글/애플 활성화
-   (각각 개발자 콘솔에서 클라이언트 ID/시크릿 발급)
+1. **Authentication > Providers**에서 카카오/구글/애플 활성화
+   (각각 개발자 콘솔에서 클라이언트 ID/시크릿 발급, 네이버는 Supabase 미지원 → 아래 커스텀 플로우)
 2. **Authentication > Providers > Email** 활성화 + **Confirm email ON**
    (가입 확인 메일을 보내고, 링크 클릭 시 `/login?confirmed=1`로 리다이렉트)
 3. **Authentication > URL Configuration**에 등록
@@ -91,3 +94,6 @@ Vercel 배포 시 `NEXT_PUBLIC_*` 환경변수를 프로젝트 설정에 동일�
 - 최초 로그인 시 Supabase 트리거가 `public.users` 행을 자동 생성(`auth_user_id`)
 - 비밀번호 찾기: `resetPasswordForEmail`의 `redirectTo`를 `/auth/callback?next=/reset-password`로 지정
   → 메일 링크 → `/auth/callback`이 세션 교환 → `/reset-password`에서 새 비밀번호 입력 → `updateUser` → `/login?password_reset=1`
+- 네이버 로그인 (Supabase 미지원 → 커스텀 OAuth):
+  `/login` → 네이버 authorize(`/auth/callback/naver` 콜백) → `src/lib/naver.ts`가 토큰 교환+userinfo 조회
+  → `src/lib/supabase/admin.ts`(service_role)가 유저 생성/조회 → Magic Link `verifyOtp`로 세션 발급
