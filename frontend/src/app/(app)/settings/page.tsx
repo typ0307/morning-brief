@@ -21,8 +21,12 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="mb-4 text-xl font-bold">설정</h1>
+      <h1 className="text-xl font-bold">설정</h1>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          계정 연결
+        </h2>
         <div className="flex flex-col gap-4">
           <TelegramLink
             userId={row.id}
@@ -36,9 +40,15 @@ export default async function SettingsPage() {
             discordUserId={row.discord_user_id ?? null}
             inviteUrl={discordInviteUrl}
           />
-          <ScheduleEditor userId={row.id} />
         </div>
-      </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          발송 일정
+        </h2>
+        <ScheduleEditor userId={row.id} />
+      </section>
     </div>
   );
 }
