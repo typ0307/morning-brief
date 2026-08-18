@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import BriefingCard from "@/components/briefing-card";
+import BriefingList from "@/components/briefing-list";
+import { BRIEFING_PAGE_SIZE } from "@/lib/briefings";
 import type { BriefingRow, SubscriptionRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -56,12 +57,12 @@ export default async function HomePage({
     let query = supabase
       .from("briefings")
       .select(
-        "id, brief_date, summary, topic_id, topics(keyword), articles(title, url, snippet)"
+        "id, brief_date, summary, topic_id, topics(keyword), articles(title, url)"
       )
       .in("topic_id", topicIds)
       .order("brief_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(BRIEFING_PAGE_SIZE);
 
     if (topic) {
       query = query.eq("topic_id", topic);
@@ -118,7 +119,12 @@ export default async function HomePage({
           아직 생성된 브리핑이 없습니다.
         </p>
       ) : (
-        briefings.map((b) => <BriefingCard key={b.id} briefing={b} />)
+        <BriefingList
+          key={topic ?? "all"}
+          initialBriefings={briefings}
+          hasMore={briefings.length === BRIEFING_PAGE_SIZE}
+          topicId={topic ?? null}
+        />
       )}
     </div>
   );
