@@ -132,17 +132,19 @@ export default function LoginButtons() {
 
   return (
     <div className="flex flex-col gap-3">
-      {PROVIDERS.filter((p) => p.id !== "kakao").map((p) => (
-        <button
-          key={p.id}
-          onClick={() => signIn(p.id)}
-          disabled={loading !== null}
-          className={`relative flex h-14 w-full items-center justify-center rounded-xl border text-base font-semibold transition-colors disabled:opacity-60 ${p.className}`}
-        >
-          <span className="absolute left-5">{p.logo}</span>
-          <span>{loading === p.id ? "로그인 중..." : p.label}</span>
-        </button>
-      ))}
+      {PROVIDERS.filter((p) => p.id !== "kakao" && p.id !== "apple").map(
+        (p) => (
+          <button
+            key={p.id}
+            onClick={() => signIn(p.id)}
+            disabled={loading !== null}
+            className={`relative flex h-14 w-full items-center justify-center rounded-xl border text-base font-semibold transition-colors disabled:opacity-60 ${p.className}`}
+          >
+            <span className="absolute left-5">{p.logo}</span>
+            <span>{loading === p.id ? "로그인 중..." : p.label}</span>
+          </button>
+        ),
+      )}
     </div>
   );
 }
