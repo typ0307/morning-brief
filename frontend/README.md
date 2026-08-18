@@ -8,14 +8,16 @@ Next.js 16.3.1 (App Router, TypeScript, Tailwind) 웹 프론트엔드.
 ## 요구 사항
 
 - Node.js 20+
-- Supabase 프로젝트 (Auth: Google/Kakao)
+- Supabase 프로젝트 (Auth: 이메일 + 카카오/네이버/구글/애플 소셜 로그인)
 
 ## 디렉터리 구조
 
 ```
-src/app/              페이지 (/, /login, /keywords, /settings, /auth/callback)
+src/app/              페이지 (/, /login, /login/email, /reset-password, /keywords, /settings)
   (app)/              인증 사용자 전용 레이아웃(네비게이션 포함)
-  auth/callback/      OAuth code exchange
+  auth/callback/      OAuth/이메일 인증 code exchange
+  login/email/        이메일 로그인/가입/비밀번호 재설정
+  reset-password/     재설정 링크 진입 후 새 비밀번호 설정
 src/components/       UI 컴포넌트
 src/lib/              Supabase 클라이언트, 타입, 인증 헬퍼
 src/proxy.ts          세션 갱신 + 비로그인 리다이렉트 (Next 16의 middleware)
@@ -42,23 +44,22 @@ npm run dev                  # http://localhost:3000
 
 ### Supabase Auth 설정
 
-1. **Authentication > Providers**에서 Google, Kakao 활성화
+1. **Authentication > Providers**에서 카카오/네이버/구글/애플 활성화
    (각각 개발자 콘솔에서 클라이언트 ID/시크릿 발급)
 2. **Authentication > Providers > Email** 활성화 + **Confirm email ON**
    (가입 확인 메일을 보내고, 링크 클릭 시 `/login?confirmed=1`로 리다이렉트)
-3. **Naver/Apple** 활성화 시 각 개발자 콘솔 키 입력
-   (콜백: `https://<ref>.supabase.co/auth/v1/callback`)
-4. **Authentication > URL Configuration**에 등록
+3. **Authentication > URL Configuration**에 등록
    - Site URL: `http://localhost:3000` (운영: Vercel 도메인)
    - Redirect URL: `http://localhost:3000/auth/callback` (운영: `https://<domain>/auth/callback`)
    - Redirect URL: `http://localhost:3000/login` (운영: `https://<domain>/login` — 이메일 인증 `emailRedirectTo`용)
+   - 소셜 제공자 콜백: `https://<ref>.supabase.co/auth/v1/callback`
 
 ### 로봇 체크 (Cloudflare Turnstile)
 
 1. [Cloudflare 대시보드](https://dash.cloudflare.com) → **Turnstile** → 사이트 추가
    (도메인에 `localhost`/운영 도메인 등록)
 2. 발급된 **Site key**를 `NEXT_PUBLIC_TURNSTILE_SITE_KEY`로 설정
-3. Supabase 대시보드 → **Authentication > Bot and Abuse Prevention**에서
+3. Supabase 대시보드 → **Project Settings → Auth**에서
    **Enable CAPTCHA protection** 활성화 + 제공자로 **Turnstile** 선택 + **Secret key** 입력
 4. 이후 `signInWithPassword`/`signUp`/`resetPasswordForEmail` 호출이 자동으로
    `captchaToken`을 전송 (키 미설정 시 캡챠 없이 동작)

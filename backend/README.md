@@ -19,6 +19,7 @@ bots/          텔레그램/디스코드 봇 (python -m bots.<모듈명>)
 collectors/    네이버 뉴스 수집기
 db/            Supabase DB 레이어
 notifier/      텔레그램/디스코드 발송
+config.py        환경변수 로드/검증
 main.py          배치 파이프라인 (--dry-run 지원)
 start.py         스케줄러 + 봇들 통합 실행 (비정상 종료 시 재시작)
 scheduler.py     사용자별 발송 일정 스케줄러 (--once/--dry-run 지원)
